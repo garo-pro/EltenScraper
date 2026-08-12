@@ -1,0 +1,28 @@
+[package]
+name = "elten-scraper"
+version = "0.1.0"
+edition = "2021"
+description = "Scraper and archiver for the Elten (EltenLink) forum network"
+license = "GPL-3.0-or-later"
+readme = "README.md"
+publish = false
+
+[dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "fs", "io-util", "signal"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json", "stream", "gzip"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+clap = { version = "4", features = ["derive"] }
+dialoguer = "0.11"
+rusqlite = { version = "0.32", features = ["bundled"] }
+anyhow = "1"
+futures = "0.3"
+indicatif = "0.17"
+rand = "0.8"
+sha2 = "0.10"
+time = { version = "0.3", features = ["formatting", "macros"] }
+
+[profile.release]
+opt-level = 3
+lto = "thin"

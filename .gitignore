@@ -1,0 +1,10 @@
+/target
+
+# Scraped output: posts, audio, attachments, cached session token, device id.
+# This is other people's content and personal data - never commit it.
+/data
+/export
+
+# Local configuration, including the remembered username.
+elten.toml
+elten.toml.bak

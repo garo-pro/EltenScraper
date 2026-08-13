@@ -9,12 +9,13 @@ mod auth;
 mod bench;
 mod config;
 mod model;
+mod progress;
 mod scrape;
 mod select;
 mod store;
 
 use anyhow::{Context, Result};
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -29,8 +30,31 @@ struct Cli {
     #[arg(long, short, default_value = "elten.toml", global = true)]
     config: PathBuf,
 
+    /// How progress is reported, overriding `ui.progress` for this run.
+    #[arg(long, value_enum, global = true)]
+    progress: Option<ProgressMode>,
+
     #[command(subcommand)]
     command: Command,
+}
+
+/// Progress is reported as numbers on their own lines; there is no drawn bar,
+/// which a screen reader can only read out as noise.
+#[derive(Copy, Clone, PartialEq, Eq, ValueEnum)]
+enum ProgressMode {
+    /// Counts, percentage and an estimate of the time left.
+    Plain,
+    /// Nothing until each phase's summary.
+    None,
+}
+
+impl ProgressMode {
+    fn as_str(self) -> &'static str {
+        match self {
+            ProgressMode::Plain => "plain",
+            ProgressMode::None => "none",
+        }
+    }
 }
 
 #[derive(Subcommand)]
@@ -120,7 +144,10 @@ async fn main() -> Result<()> {
         }
 
         Command::Scrape { full, no_audio, limit } => {
-            let cfg = Config::load(&cli.config)?;
+            let mut cfg = Config::load(&cli.config)?;
+            if let Some(mode) = cli.progress {
+                cfg.ui.progress = mode.as_str().into();
+            }
             let client = Arc::new(Client::new(&cfg)?);
             auth::establish(&client, &cfg).await?;
             scrape::run(client, &cfg, full, no_audio, limit).await?;

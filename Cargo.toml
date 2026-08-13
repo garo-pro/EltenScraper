@@ -18,7 +18,6 @@ dialoguer = "0.11"
 rusqlite = { version = "0.32", features = ["bundled"] }
 anyhow = "1"
 futures = "0.3"
-indicatif = "0.17"
 rand = "0.8"
 sha2 = "0.10"
 time = { version = "0.3", features = ["formatting", "macros"] }

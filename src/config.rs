@@ -16,6 +16,7 @@ pub struct Config {
     pub storage: Storage,
     pub selection: Selection,
     pub bench: Bench,
+    pub ui: Ui,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -199,6 +200,37 @@ impl Default for Bench {
     }
 }
 
+/// How the run talks to you while it works. See [`crate::progress`] for why
+/// there is no drawn bar to configure.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Ui {
+    /// "plain" reports progress as numbers on their own lines; "none" says
+    /// nothing until each phase's summary.
+    pub progress: String,
+    /// Report every this many percent of a phase. 0 reports on time alone.
+    pub progress_step_percent: u8,
+    /// Report anyway after this many seconds without one, so a slow phase still
+    /// says it is alive. 0 reports on percentage alone.
+    pub progress_interval_secs: u64,
+}
+
+impl Default for Ui {
+    fn default() -> Self {
+        Self {
+            progress: "plain".into(),
+            progress_step_percent: 5,
+            progress_interval_secs: 30,
+        }
+    }
+}
+
+impl Ui {
+    pub fn progress_enabled(&self) -> bool {
+        self.progress != "none"
+    }
+}
+
 impl Config {
     pub fn load(path: &Path) -> Result<Self> {
         if !path.exists() {
@@ -241,6 +273,12 @@ impl Config {
                 "selection.mode must be one of: all, groups, forums, exclude (got {:?})",
                 self.selection.mode
             );
+        }
+        if !matches!(self.ui.progress.as_str(), "plain" | "none") {
+            bail!("ui.progress must be one of: plain, none (got {:?})", self.ui.progress);
+        }
+        if self.ui.progress_step_percent > 100 {
+            bail!("ui.progress_step_percent cannot exceed 100");
         }
         Ok(())
     }

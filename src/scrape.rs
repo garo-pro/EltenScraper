@@ -11,7 +11,6 @@
 
 use anyhow::{Context, Result};
 use futures::StreamExt;
-use indicatif::{ProgressBar, ProgressStyle};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -21,17 +20,9 @@ use std::sync::Arc;
 use crate::api::Client;
 use crate::config::Config;
 use crate::model::{expand_incremental, str_of, truthy, Post, Structure};
+use crate::progress::Progress;
 use crate::select::resolve_forums;
 use crate::store::{now, AttachmentRecord, AudioJob, DbOp, Store, Writer};
-
-fn progress(len: u64, what: &str) -> ProgressBar {
-    let pb = ProgressBar::new(len);
-    let style = ProgressStyle::with_template("  {bar:38} {pos}/{len} {msg}")
-        .unwrap_or_else(|_| ProgressStyle::default_bar());
-    pb.set_style(style);
-    pb.set_message(what.to_string());
-    pb
-}
 
 #[cfg(test)]
 mod tests {
@@ -341,7 +332,7 @@ pub async fn run(
     } else {
         let writer = Writer::spawn(store);
         let tx = writer.sender();
-        let pb = progress(targets.len() as u64, "threads");
+        let pb = Progress::new(targets.len() as u64, "threads", &cfg.ui);
 
         let results = futures::stream::iter(targets.into_iter().map(|(thread_id, last_update)| {
             let client = client.clone();
@@ -379,7 +370,7 @@ pub async fn run(
         .collect::<Vec<_>>()
         .await;
 
-        pb.finish_and_clear();
+        pb.finish();
         drop(tx);
         store = writer.finish().await?;
 
@@ -406,7 +397,7 @@ pub async fn run(
             let max_bytes = cfg.media.max_audio_mb.saturating_mul(1024 * 1024);
             let writer = Writer::spawn(store);
             let tx = writer.sender();
-            let pb = progress(jobs.len() as u64, "audio");
+            let pb = Progress::new(jobs.len() as u64, "audio", &cfg.ui);
 
             let results = futures::stream::iter(jobs.into_iter().map(|job| {
                 let client = client.clone();
@@ -462,7 +453,7 @@ pub async fn run(
             .collect::<Vec<_>>()
             .await;
 
-            pb.finish_and_clear();
+            pb.finish();
             drop(tx);
             store = writer.finish().await?;
 
@@ -498,7 +489,7 @@ pub async fn run(
             let max_bytes = cfg.media.max_attachment_mb.saturating_mul(1024 * 1024);
             let writer = Writer::spawn(store);
             let tx = writer.sender();
-            let pb = progress(jobs.len() as u64, "attachments");
+            let pb = Progress::new(jobs.len() as u64, "attachments", &cfg.ui);
 
             let results = futures::stream::iter(jobs.into_iter().map(|(id, _post_id)| {
                 let client = client.clone();
@@ -535,7 +526,7 @@ pub async fn run(
             .collect::<Vec<_>>()
             .await;
 
-            pb.finish_and_clear();
+            pb.finish();
             drop(tx);
             store = writer.finish().await?;
 

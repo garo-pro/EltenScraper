@@ -17,7 +17,7 @@ elten-scraper status    # see what's stored
 
 ## Commands
 
-Every command accepts `-c, --config <PATH>` (default `elten.toml`), so you can keep several configurations side by side — for example one per forum selection, each with its own database.
+Every command accepts `-c, --config <PATH>` (default `elten.toml`), so you can keep several configurations side by side — for example one per forum selection, each with its own database, and `--progress <plain|none>` to override how the run reports itself.
 
 | Command | What it does |
 | --- | --- |
@@ -31,6 +31,20 @@ Every command accepts `-c, --config <PATH>` (default `elten.toml`), so you can k
 | `export --forum <ID> --out <FILE>` | Write one forum, with its threads and posts, out as JSON. |
 
 `scrape` flags: `--full` re-fetches every selected thread, ignoring the watermarks that normally skip unchanged ones. `--no-audio` skips the audio phase for this run only, leaving the config untouched. `--limit N` stops after N threads, which is the right way to trial a large selection.
+
+## Progress output
+
+Elten is a network for blind people, so this tool assumes you are listening to the terminal rather than looking at it. There is no drawn progress bar: a screen reader can only read the glyphs out as noise, and because such a bar is redrawn in place several times a second it re-announces the same line constantly while saying nothing new.
+
+Instead each phase reports plain numbers, on their own lines, at every 5% of the work — or after 30 seconds without a report, so a slow phase still says it is alive:
+
+```
+  threads: 120/400 (30%), about 4m left
+  threads: 140/400 (35%), about 3m 40s left
+  threads: 400/400 (100%) in 6m 2s
+```
+
+Every report is a finished line, so it stays in the scrollback and can be reviewed with the review cursor. Reports go to stderr, leaving stdout to the run's own output. `--progress none` turns them off for a run, leaving only each phase's closing summary; `--progress plain` forces them back on.
 
 ## How re-scraping works
 
@@ -111,6 +125,16 @@ Concurrency is bounded independently of the rate limit, so raising `thread_concu
 | `max_audio_mb` | `64` | Per-file cap, enforced *while streaming*. |
 | `max_attachment_mb` | `256` | Per-file cap, enforced *while streaming*. |
 | `skip_existing` | `true` | Adopt files already on disk instead of re-downloading them. |
+
+### `[ui]`
+
+| Key | Default | Meaning |
+| --- | --- | --- |
+| `progress` | `plain` | `plain` reports progress as numbers on their own lines; `none` says nothing until each phase's summary. |
+| `progress_step_percent` | `5` | Report every this many percent of a phase. `0` reports on elapsed time alone. |
+| `progress_interval_secs` | `30` | Report anyway after this many seconds without one. `0` reports on percentage alone. |
+
+Raise `progress_step_percent` (or the interval) if a long run is still saying more than you want to hear.
 
 ### `[storage]`, `[selection]` and `[bench]`
 
